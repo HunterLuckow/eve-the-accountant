@@ -1,77 +1,59 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { signOut } from "@/app/login/actions";
+import { AppNav } from "@/components/app-nav";
+import { ExpenseTable } from "@/components/expense-table";
+import { dollars } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Placeholder for Task 11. For now it exists to prove the whole auth chain
- * end to end: sign-in -> hook-stamped claims -> RLS-filtered query.
+ * Every expense the signed-in user can see.
  *
- * Note there is no role check anywhere below. The same code runs for an
- * employee, a manager, and finance; the row count differs because Postgres
- * decided it did.
+ * There is no `.eq("submitter_id", user.id)` here and no role branch. The
+ * query is `select * from expenses`; RLS decides what that means for whoever
+ * is asking. Employees get their own, managers add their reports', finance
+ * gets the org.
  */
 export default async function InboxPage() {
   const supabase = await createServerSupabase();
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const claims = session?.access_token
-    ? (JSON.parse(
-        Buffer.from(session.access_token.split(".")[1], "base64url").toString(),
-      ) as Record<string, unknown>)
-    : null;
-
-  const { count } = await supabase
+  const { data: rows } = await supabase
     .from("expenses")
-    .select("*", { count: "exact", head: true });
+    .select("id, spent_at, description, amount_cents, status, submitter:profiles!expenses_submitter_id_fkey(full_name)")
+    .order("spent_at", { ascending: false })
+    .limit(200);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role")
-    .eq("id", String(claims?.sub ?? ""))
-    .maybeSingle();
+  const expenses = (rows ?? []).map((r) => ({
+    ...r,
+    submitter: Array.isArray(r.submitter) ? r.submitter[0] : r.submitter,
+  }));
+
+  const drafts = expenses.filter((e) => e.status === "draft");
+  const total = expenses.reduce((s, e) => s + e.amount_cents, 0);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <header className="mb-8 flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">
-          {profile?.full_name ?? "Signed in"}
-        </h1>
-        <form action={signOut}>
-          <button className="text-sm text-gray-500 underline">Sign out</button>
-        </form>
-      </header>
+    <>
+      <AppNav />
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <header className="mb-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">My expenses</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {expenses.length} visible · {dollars(total)} total
+            </p>
+          </div>
+          {drafts.length > 0 && (
+            <p className="text-sm text-amber-700">
+              {drafts.length} draft{drafts.length > 1 ? "s" : ""} not yet submitted
+            </p>
+          )}
+        </header>
 
-      <section className="mb-8 rounded border border-gray-200 p-4">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Claims in your access token
-        </h2>
-        <dl className="space-y-1 font-mono text-sm">
-          {(["sub", "role", "org_id", "user_role"] as const).map((k) => (
-            <div key={k}>
-              <dt className="inline text-gray-500">{k}: </dt>
-              <dd className="inline">{String(claims?.[k] ?? "—")}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-3 text-xs text-gray-500">
-          <code>org_id</code> and <code>user_role</code> are written by
-          <code> custom_access_token_hook</code>. Every RLS policy reads them.
-        </p>
-      </section>
-
-      <section className="rounded border border-gray-200 p-4">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Expenses visible to you
-        </h2>
-        <p className="text-3xl font-semibold tabular-nums">{count ?? 0}</p>
-        <p className="mt-2 text-xs text-gray-500">
-          Same query for every role. The number changes because Postgres says so.
-        </p>
-      </section>
-    </main>
+        <ExpenseTable
+          rows={expenses}
+          showSubmitter
+          empty="No expenses are visible to you."
+        />
+      </main>
+    </>
   );
 }
