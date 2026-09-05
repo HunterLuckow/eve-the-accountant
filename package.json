@@ -12,7 +12,8 @@
     "reset": "tsx scripts/reset.ts",
     "test:rls": "tsx scripts/test-rls.ts",
     "receipts": "tsx scripts/make-receipts.ts",
-    "check:agent": "tsx scripts/check-agent.ts"
+    "check:agent": "tsx scripts/check-agent.ts",
+    "check:auth": "tsx scripts/check-channel-auth.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
