@@ -83,6 +83,14 @@ eve-the-accountant/
 **Interfaces:**
 - Produces: a running dev server on `:3000` with `/eve/v1/session` reachable; `docs/eve-api-notes.md` recording the installed eve version and the exact names of the APIs later tasks depend on.
 
+**Why this task comes first, and why Supabase is not in it:** eve has no cloud
+service and no account — it is an npm package plus a directory of files, compiled
+into routes by `withEve()`. Its only external dependency is a model. So this task
+gets the agent *thinking* with no database attached at all. Tasks 2–11 then build a
+working multi-tenant app with no AI attached at all. The two halves are genuinely
+independent and only meet in Task 13. Build them in that order and you understand
+each on its own.
+
 - [ ] **Step 1: Scaffold Next.js into the existing repo**
 
 ```bash
@@ -142,7 +150,26 @@ report what you find. You do not approve or reject anything — a human does tha
 Be concise and factual.
 ```
 
-- [ ] **Step 5: Verify the dev server boots and a session runs**
+- [ ] **Step 5: Get an AI Gateway credential**
+
+eve resolves the model string `anthropic/claude-opus-5` through Vercel AI Gateway.
+Without a credential the agent cannot emit a single token, so this must happen
+before any session test.
+
+*(manual)* Go to https://vercel.com/dashboard → **AI Gateway** → **API Keys** →
+create a key. Then:
+
+```bash
+echo 'AI_GATEWAY_API_KEY=<paste>' >> .env.local
+```
+
+This is only needed for **local** development. On Vercel, OIDC authenticates the
+deployment to the Gateway automatically and no key is set (Task 21).
+
+One credential covers every provider the Gateway fronts, and spend shows up in the
+Vercel dashboard — which is also how you keep rehearsals from surprising you.
+
+- [ ] **Step 6: Verify the dev server boots and a session runs**
 
 ```bash
 pnpm dev
@@ -158,7 +185,7 @@ curl -sS -X POST http://127.0.0.1:3000/eve/v1/session \
 
 Expected: JSON containing a `continuationToken`, and an `x-eve-session-id` response header. If this fails with an auth error, note it — Task 13 configures the channel auth policy properly and local dev may need `localDev()`.
 
-- [ ] **Step 6: Record the installed API surface**
+- [ ] **Step 7: Record the installed API surface**
 
 This plan was written against eve's public docs during beta. Confirm the names before later tasks depend on them.
 
@@ -190,7 +217,7 @@ Verified: 2026-09-05
 Deviations found and how this plan changed:
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A && git commit -m "feat: scaffold Next.js + eve, verify API surface"
