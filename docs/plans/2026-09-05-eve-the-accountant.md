@@ -383,7 +383,7 @@ Expected: `Applying migration 20260905000100_core_schema.sql...` then success.
 - [ ] **Step 3: Verify RLS is on for all four tables**
 
 ```bash
-pnpm supabase db execute --query "select relname, relrowsecurity from pg_class where relname in ('orgs','profiles','vendors','expenses') order by relname;"
+pnpm supabase db query --linked "select relname, relrowsecurity from pg_class where relname in ('orgs','profiles','vendors','expenses') order by relname;"
 ```
 
 Expected: four rows, `relrowsecurity` = `t` for each.
@@ -571,7 +571,7 @@ This step is easy to forget and everything downstream silently breaks without it
 - [ ] **Step 4: Verify the policies landed**
 
 ```bash
-pnpm supabase db execute --query "select tablename, policyname, cmd from pg_policies where schemaname='public' order by tablename, policyname;"
+pnpm supabase db query --linked "select tablename, policyname, cmd from pg_policies where schemaname='public' order by tablename, policyname;"
 ```
 
 Expected: 10 rows. Confirm by eye that **no policy on `expenses` with `cmd = 'UPDATE'` mentions `agent`.**
@@ -703,7 +703,7 @@ alter publication supabase_realtime add table expenses;
 
 ```bash
 pnpm supabase db push
-pnpm supabase db execute --query "select tablename from pg_publication_tables where pubname='supabase_realtime' order by tablename;"
+pnpm supabase db query --linked "select tablename from pg_publication_tables where pubname='supabase_realtime' order by tablename;"
 ```
 
 Expected: includes `agent_steps` and `expenses`.
@@ -849,7 +849,7 @@ The agent can **read** receipts and cannot **upload** them. Same shape as the ex
 
 ```bash
 pnpm supabase db push
-pnpm supabase db execute --query "select id, public from storage.buckets where id='receipts';"
+pnpm supabase db query --linked "select id, public from storage.buckets where id='receipts';"
 ```
 
 Expected: one row, `public` = `f`.
@@ -1050,7 +1050,7 @@ Expected: prints three expense ids and the shared password.
 - [ ] **Step 5: Verify the row counts**
 
 ```bash
-pnpm supabase db execute --query "select status, count(*) from expenses group by status order by status;"
+pnpm supabase db query --linked "select status, count(*) from expenses group by status order by status;"
 ```
 
 Expected: `approved` = 120, `draft` = 3.
@@ -2114,7 +2114,7 @@ curl -sS -X POST http://127.0.0.1:3000/eve/v1/session \
 Then:
 
 ```bash
-pnpm supabase db execute --query "select merchant, total_cents, confidence from receipt_extractions;"
+pnpm supabase db query --linked "select merchant, total_cents, confidence from receipt_extractions;"
 ```
 
 Expected: a row whose `merchant` reads `Meridian Consulting` and whose `total_cents` matches the receipt image.
@@ -2295,7 +2295,7 @@ Be concise. Report what you found, not what you did.
 First submit a demo expense:
 
 ```bash
-pnpm supabase db execute --query "update expenses set status='submitted' where status='draft' returning id, amount_cents;"
+pnpm supabase db query --linked "update expenses set status='submitted' where status='draft' returning id, amount_cents;"
 ```
 
 ```bash
@@ -2307,7 +2307,7 @@ curl -sS -X POST http://127.0.0.1:3000/eve/v1/session \
 Then:
 
 ```bash
-pnpm supabase db execute --query "select kind, severity, rationale from expense_flags order by created_at desc limit 5;"
+pnpm supabase db query --linked "select kind, severity, rationale from expense_flags order by created_at desc limit 5;"
 ```
 
 Expected: a `structuring` flag at `critical` severity covering all three expenses.
@@ -2482,7 +2482,7 @@ export default defineHook({
 Run any session, then:
 
 ```bash
-pnpm supabase db execute --query "select event_type, title, created_at from agent_steps order by created_at limit 20;"
+pnpm supabase db query --linked "select event_type, title, created_at from agent_steps order by created_at limit 20;"
 ```
 
 Expected: a chronological list starting with `session.started`.
@@ -2492,7 +2492,7 @@ Expected: a chronological list starting with `session.started`.
 Run the same session again and confirm the row count grows by the number of *new* events, with no duplicate ids:
 
 ```bash
-pnpm supabase db execute --query "select count(*) total, count(distinct id) distinct_ids from agent_steps;"
+pnpm supabase db query --linked "select count(*) total, count(distinct id) distinct_ids from agent_steps;"
 ```
 
 Expected: `total` = `distinct_ids`.
@@ -2626,13 +2626,13 @@ If you create this trigger, **delete the dashboard webhook** — otherwise every
 With the tunnel running and the webhook pointed at it:
 
 ```bash
-pnpm supabase db execute --query "update expenses set status='submitted' where id='<a draft demo id>';"
+pnpm supabase db query --linked "update expenses set status='submitted' where id='<a draft demo id>';"
 ```
 
 Then:
 
 ```bash
-pnpm supabase db execute --query "select session_id, title, created_at from agent_steps order by created_at desc limit 10;"
+pnpm supabase db query --linked "select session_id, title, created_at from agent_steps order by created_at desc limit 10;"
 ```
 
 Expected: fresh rows within a few seconds. If nothing appears, check `select * from net._http_response order by created desc limit 5;` for the delivery status.
@@ -2964,7 +2964,7 @@ main().catch((e) => { console.error(e); process.exit(1); });
 
 ```bash
 set -a && source .env.local && set +a && pnpm reset
-pnpm supabase db execute --query "select count(*) from agent_steps;"
+pnpm supabase db query --linked "select count(*) from agent_steps;"
 ```
 
 Expected: three demo ids printed; `agent_steps` count = 0.
@@ -3013,7 +3013,7 @@ pnpm dlx vercel deploy --prod
 Update the Vault secret so the trigger targets the deployed URL:
 
 ```bash
-pnpm supabase db execute --query "select vault.update_secret((select id from vault.secrets where name='app_base_url'), 'https://<your-app>.vercel.app');"
+pnpm supabase db query --linked "select vault.update_secret((select id from vault.secrets where name='app_base_url'), 'https://<your-app>.vercel.app');"
 ```
 
 - [ ] **Step 6: Write the runbook**
