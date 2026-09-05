@@ -280,9 +280,17 @@ max_frequency = "5s"
 # uri = "pg-functions://postgres/auth/before-user-created-hook"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://<database>/<schema>/<hook_name>"
+#
+# Stamps org_id and user_role into every access token. Defined in
+# supabase/migrations/20260905173424_auth_hook_and_policies.sql.
+#
+# Without this enabled, tokens carry no org_id/user_role, every RLS policy in
+# the app evaluates false, and the entire application shows empty pages with no
+# error anywhere. Keeping it here rather than in the dashboard means it is
+# version-controlled and cannot be silently missing on a fresh project.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]

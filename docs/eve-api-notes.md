@@ -106,8 +106,32 @@ for structured 401/403 rejection.
 
 **Do not use `oidc()` for Supabase user tokens.** It hardcodes
 `principalType: "service"`, which would collapse the human/machine distinction the
-approval gate depends on. Write a custom `AuthFn` using `verifyJwtEcdsa` (Supabase
-signs ES256 by default) so we control `principalType` and can populate `attributes`.
+approval gate depends on. Write a custom `AuthFn` using `verifyJwtEcdsa` so we
+control `principalType` and can populate `attributes`.
+
+### Verified against this project (2026-09-05)
+
+`eve-demo-1` (`mxpbapqeksbfchiklwzg`) publishes an asymmetric signing key:
+
+```
+GET /auth/v1/.well-known/jwks.json
+kid: d2561070-174d-4ac2-8b2b-de33cb04d942   alg: ES256   kty: EC
+```
+
+Two distinct token types exist in one project — do not confuse them:
+
+| Token | Signing | Role |
+|---|---|---|
+| `anon` / `service_role` API key | HS256, static, 10y expiry | Legacy API key. Carries `role`, no user identity. |
+| GoTrue user access token | **ES256**, rotatable, JWKS | Real sign-in identity. Carries `sub`, and our `org_id` / `user_role` claims. |
+
+Task 13 therefore uses **`jwtEcdsa`**, fetching the PEM from that JWKS endpoint.
+`VerifyJwtEcdsaConfig` wants a PEM-encoded public key, so the JWK has to be
+converted (Node's `crypto.createPublicKey({ key: jwk, format: "jwk" })` then
+`.export({ type: "spki", format: "pem" })`).
+
+Issuer will be `https://mxpbapqeksbfchiklwzg.supabase.co/auth/v1`, audience
+`authenticated`.
 
 **`localDev()` only authenticates when `EVE_DEV=1` or `vercel dev`.** It is a
 property of the deployment, never of the request — no header can flip it. It
