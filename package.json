@@ -11,7 +11,8 @@
     "seed": "tsx scripts/seed.ts",
     "reset": "tsx scripts/reset.ts",
     "test:rls": "tsx scripts/test-rls.ts",
-    "receipts": "tsx scripts/make-receipts.ts"
+    "receipts": "tsx scripts/make-receipts.ts",
+    "check:agent": "tsx scripts/check-agent.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

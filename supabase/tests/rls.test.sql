@@ -66,9 +66,14 @@ insert into expenses (id, org_id, submitter_id, amount_cents, spent_at, status, 
   ('cccccccc-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111','aaaaaaaa-0000-0000-0000-000000000001', 50000, current_date,'submitted','A/emp one'),
   ('cccccccc-0000-0000-0000-000000000002','11111111-1111-1111-1111-111111111111','aaaaaaaa-0000-0000-0000-000000000001', 90000, current_date,'submitted','A/emp two'),
   ('cccccccc-0000-0000-0000-000000000003','11111111-1111-1111-1111-111111111111','aaaaaaaa-0000-0000-0000-000000000003', 70000, current_date,'submitted','A/fin'),
+  -- A DRAFT owned by the employee. Required by the self-approval regression
+  -- test: expenses_update_own_draft's USING clause only matches `draft`, so
+  -- without this row the escalation path is unreachable and the test would
+  -- pass vacuously.
+  ('cccccccc-0000-0000-0000-000000000004','11111111-1111-1111-1111-111111111111','aaaaaaaa-0000-0000-0000-000000000001', 30000, current_date,'draft','A/emp draft'),
   ('dddddddd-0000-0000-0000-000000000001','22222222-2222-2222-2222-222222222222','bbbbbbbb-0000-0000-0000-000000000001', 90000, current_date,'submitted','B/emp');
 
-insert into tap values (0, (select plan(11)));
+insert into tap values (0, (select plan(16)));
 
 -- ===========================================================================
 -- EMPLOYEE — sees only their own
@@ -83,12 +88,29 @@ select set_config('request.jwt.claims', json_build_object(
 set local role authenticated;
 
 insert into tap values (1, (select is(
-  (select count(*) from expenses)::int, 2,
+  (select count(*) from expenses)::int, 3,
   'employee sees only their own expenses')));
 
 insert into tap values (2, (select is(
   (select count(*) from expenses where submitter_id <> 'aaaaaaaa-0000-0000-0000-000000000001')::int, 0,
   'employee sees nobody else''s, even in their own org')));
+
+-- REGRESSION TEST for the privilege escalation fixed in
+-- 20260905193814_fix_with_check_privilege_escalation.sql.
+--
+-- An employee reaches their own row through expenses_update_own_draft's USING
+-- clause. Before the fix they could then satisfy expenses_update_approver's
+-- WITH CHECK — which only asked about org_id — and set status to 'approved'.
+-- Two policies, neither wrong alone, combining into a self-approval grant.
+--
+-- This suite had 12 green assertions and did not catch it, because none of
+-- them asked whether a NON-approver could approve. Absence of a test is not
+-- evidence of absence of a hole.
+insert into tap values (14, (select throws_ok($$
+  update expenses set status = 'approved'
+  where id = 'cccccccc-0000-0000-0000-000000000004'
+$$, '42501', null,
+  'employee CANNOT self-approve (WITH CHECK escalation)')));
 
 reset role;
 
@@ -101,7 +123,7 @@ select set_config('request.jwt.claims', json_build_object(
 set local role authenticated;
 
 insert into tap values (3, (select is(
-  (select count(*) from expenses)::int, 2,
+  (select count(*) from expenses)::int, 3,
   'manager sees their direct reports'' expenses')));
 
 reset role;
@@ -115,7 +137,7 @@ select set_config('request.jwt.claims', json_build_object(
 set local role authenticated;
 
 insert into tap values (4, (select is(
-  (select count(*) from expenses)::int, 3,
+  (select count(*) from expenses)::int, 4,
   'finance sees every expense in their org')));
 
 insert into tap values (5, (select is(
@@ -133,23 +155,28 @@ select set_config('request.jwt.claims', json_build_object(
 set local role authenticated;
 
 insert into tap values (6, (select is(
-  (select count(*) from expenses)::int, 3,
+  (select count(*) from expenses)::int, 4,
   'agent sees every expense in its org, same as finance')));
 
 -- THE ASSERTION THE TALK RESTS ON.
 -- The agent can see all three. It tries to approve all three. No UPDATE policy
 -- admits an agent principal, so the statement matches zero rows: no error,
 -- nothing changed.
-with attempt as (
+-- Note the shape of this assertion, and why it changed.
+--
+-- Before the agent had any UPDATE policy, this statement matched zero rows and
+-- returned silently. Now that expenses_escalate_agent gives it a USING clause
+-- matching `submitted` rows, the statement REACHES the WITH CHECK stage and is
+-- refused outright with 42501.
+--
+-- Silence became an explicit refusal, which is the stronger outcome — but a
+-- test written for the old shape (`is(count, 0)`) would now abort the whole
+-- transaction rather than fail cleanly.
+insert into tap values (7, (select throws_ok($$
   update expenses set status = 'approved'
   where org_id = '11111111-1111-1111-1111-111111111111'
-  returning 1
-)
-insert into probe select 'agent_update', count(*)::int from attempt;
-
-insert into tap values (7, (select is(
-  (select n from probe where name = 'agent_update'), 0,
-  'AGENT CANNOT APPROVE — update affects zero rows')));
+$$, '42501', null,
+  'AGENT CANNOT APPROVE — refused by WITH CHECK')));
 
 insert into tap values (8, (select is(
   (select count(*) from expenses where status = 'approved')::int, 0,
@@ -171,6 +198,42 @@ insert into tap values (10, (select throws_ok($$
           'aaaaaaaa-0000-0000-0000-000000000004', 'approved')
 $$, '42501', null,
    'agent cannot write an approval record')));
+
+-- ---------------------------------------------------------------------------
+-- ESCALATION — the one write the agent has on expenses.
+--
+-- expenses_escalate_agent grants exactly submitted -> needs_review. The
+-- trigger restrict_agent_expense_writes stops the agent riding that legitimate
+-- transition to rewrite other columns, which the policy's WITH CHECK alone
+-- would permit because it only constrains `status`.
+-- ---------------------------------------------------------------------------
+insert into tap values (15, (select throws_ok($$
+  update expenses set status = 'needs_review', amount_cents = 1
+  where id = 'cccccccc-0000-0000-0000-000000000002'
+$$, '42501', null,
+  'agent CANNOT alter amount while escalating')));
+
+with attempt as (
+  update expenses set status = 'needs_review'
+  where id = 'cccccccc-0000-0000-0000-000000000002'
+  returning 1
+)
+insert into probe select 'agent_escalate', count(*)::int from attempt;
+
+insert into tap values (16, (select is(
+  (select n from probe where name = 'agent_escalate'), 1,
+  'agent CAN escalate submitted -> needs_review')));
+
+with attempt as (
+  update expenses set status = 'submitted'
+  where id = 'cccccccc-0000-0000-0000-000000000002'
+  returning 1
+)
+insert into probe select 'agent_unescalate', count(*)::int from attempt;
+
+insert into tap values (17, (select is(
+  (select n from probe where name = 'agent_unescalate'), 0,
+  'agent CANNOT un-escalate — the grant is one-directional')));
 
 reset role;
 
