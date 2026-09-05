@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "reset": "tsx scripts/reset.ts",
-    "test:rls": "supabase test db",
+    "test:rls": "tsx scripts/test-rls.ts",
     "receipts": "tsx scripts/make-receipts.ts"
   },
   "dependencies": {
