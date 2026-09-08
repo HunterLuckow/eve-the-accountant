@@ -1,5 +1,5 @@
 /**
- * Proves the agent has no network egress.
+ * Proves the agent's tool surface is exactly what it should be.
  *
  * WHY THIS IS A SEPARATE, MODEL-FREE CHECK
  *
@@ -14,7 +14,7 @@
  * Same shape as the RLS argument. The description is advice; the
  * implementation is physics.
  *
- *   pnpm check:egress
+ *   pnpm check:tools
  */
 import webFetchModule from "../agent/tools/web_fetch";
 import webSearchModule from "../agent/tools/web_search";
@@ -65,6 +65,21 @@ async function main() {
     "descriptions tell the model the tools are disabled",
   );
 
+  // -- sandbox tools ---------------------------------------------------------
+  // Removed for a different reason than the two above: they are genuinely
+  // sandboxed and safe, but leaving them available led the agent to run
+  // `find / -iname "*expense*polic*"` when a skill failed to load. An
+  // unnecessary tool is a suggestion about what kind of problem this is, and
+  // the wrong suggestion costs turns.
+  for (const name of ["bash", "read_file", "write_file"] as const) {
+    const mod = await import(`../agent/tools/${name}`);
+    const tool = unwrap(mod);
+    const out = (await tool.execute({ command: "ls /", path: "/etc/passwd" })) as {
+      refused?: boolean;
+    };
+    report(out.refused === true, `${name} is overridden and refuses`);
+  }
+
   // Nothing in these modules may import a network client. A regression here
   // would mean someone reintroduced egress while leaving the refusal text.
   const { readFileSync } = await import("node:fs");
@@ -81,7 +96,7 @@ async function main() {
     console.error(`${failures} check(s) FAILED`);
     process.exit(1);
   }
-  console.log("All checks passed. The agent cannot reach the network.");
+  console.log("All checks passed. The tool surface is exactly as intended.");
 }
 
 main().catch((e) => {
