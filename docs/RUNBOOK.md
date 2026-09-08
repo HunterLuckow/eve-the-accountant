@@ -86,8 +86,39 @@ The approval panel is up. **Step away from the laptop.**
 > there for a week. It is consuming nothing while it waits — no polling loop,
 > no held connection, no compute."
 
-Let the silence run. This is the strongest moment in the talk and it looks
-like nothing is happening, which is the point.
+Let the silence run. This looks like nothing is happening, which is the point.
+
+### 6b · Prove it — 40s ⚠️ **the best moment in the talk**
+
+Do not just claim durability. Kill the server in front of them.
+
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN     # find it
+kill -9 <pid>
+curl -sS -o /dev/null -w "%{http_code}\n" --max-time 3 http://localhost:3000/
+```
+
+> "That returned nothing. The process that started this review is gone."
+
+Restart, wait for it to come up, then click Approve.
+
+```bash
+pnpm dev
+```
+
+> "Different process. It never saw this session start. And it finishes the
+> job."
+
+**Verified 2026-09-08**: parked → `kill -9` → listeners on :3000 dropped to 0
+→ cold restart → approve → tool executed, `escalated: 1`, expense moved to
+`needs_review`.
+
+If you are recording rather than running live, record **this** beat above all
+others — it is the one an audience will not believe without seeing.
+
+**Deployed variant:** `vercel rollback` or a redeploy makes the same point with
+less keyboard, but takes longer and depends on the network. Kill the local
+process if you can.
 
 ### 7 · Approve — 45s
 Click Approve. Status flips to `needs review`, panel dismisses.
