@@ -13,7 +13,8 @@
     "test:rls": "tsx scripts/test-rls.ts",
     "receipts": "tsx scripts/make-receipts.ts",
     "check:agent": "tsx scripts/check-agent.ts",
-    "check:auth": "tsx scripts/check-channel-auth.ts"
+    "check:auth": "tsx scripts/check-channel-auth.ts",
+    "check:egress": "tsx scripts/check-egress.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
