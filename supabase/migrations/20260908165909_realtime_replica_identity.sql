@@ -1,0 +1,35 @@
+-- Realtime could not deliver anything. This is why.
+--
+-- REPLICA IDENTITY DEFAULT puts only the PRIMARY KEY into the WAL. Realtime
+-- reads the WAL, so with the default setting it sees {id} and nothing else.
+--
+-- That breaks two things at once for an RLS-protected table:
+--
+--   1. POLICY EVALUATION. Realtime applies the subscriber's RLS to every
+--      change before delivering it — which is the property that makes a
+--      subscription safe. Our steps_select policy reads org_id and expense_id,
+--      neither of which is in the WAL, so the policy cannot be evaluated and
+--      the message is dropped. Correctly: an undecidable authorization check
+--      must fail closed.
+--
+--   2. COLUMN FILTERS. `filter: expense_id=eq.<id>` in the client needs
+--      expense_id present for the same reason.
+--
+-- The failure mode is silent and deeply confusing: the subscription reports
+-- SUBSCRIBED, the rows are demonstrably in the table, and nothing ever
+-- arrives. Nothing logs an error, because from Postgres's point of view
+-- nothing went wrong.
+--
+-- THE TRADEOFF, since this is not free
+--
+-- REPLICA IDENTITY FULL writes the entire OLD row into the WAL on every UPDATE
+-- and DELETE, which grows WAL volume and replication load. On a
+-- high-write table that matters. Here, agent_steps is insert-only and
+-- low-volume, and expenses changes a handful of times per expense — so the
+-- cost is negligible and the alternative is a feature that does not work.
+--
+-- Consider it required for any RLS-protected table you intend to subscribe to
+-- with a policy that reads more than the primary key.
+
+alter table public.agent_steps replica identity full;
+alter table public.expenses    replica identity full;

@@ -69,6 +69,27 @@ export default defineTool({
 
     const missing = expenseIds.filter((id) => !visible.some((e) => e.id === id));
 
+    const combinedCents = visible.reduce((sum, e) => sum + e.amount_cents, 0);
+
+    /**
+     * Append the arithmetic rather than trusting the prose.
+     *
+     * The model writes the rationale, and it does the sums again in words even
+     * though every tool hands it the totals pre-computed. Observed in a real
+     * run: a finding whose rationale read "$3,940.00 + $3,875.00 + $3,990.00 =
+     * $11,847.00" — the right charges, the wrong total, sitting on screen next
+     * to the correct figure elsewhere on the page.
+     *
+     * A finding is evidence a human acts on, so the numbers in it are computed
+     * here and appended. The model explains; Postgres counts.
+     */
+    const arithmetic =
+      visible.length > 1
+        ? `\n\nComputed: ${visible
+            .map((e) => dollars(e.amount_cents))
+            .join(" + ")} = ${dollars(combinedCents)} across ${visible.length} expenses.`
+        : "";
+
     const { data: written, error } = await db
       .from("expense_flags")
       .insert(
@@ -77,16 +98,18 @@ export default defineTool({
           org_id: orgId,
           kind,
           severity,
-          rationale,
-          evidence: { ...evidence, coversExpenseIds: visible.map((v) => v.id) },
+          rationale: rationale.trim() + arithmetic,
+          evidence: {
+            ...evidence,
+            coversExpenseIds: visible.map((v) => v.id),
+            combinedCents,
+          },
           created_by: "agent" as const,
         })),
       )
       .select("id, expense_id");
 
     if (error) throw new Error(`Could not record finding: ${error.message}`);
-
-    const combined = visible.reduce((sum, e) => sum + e.amount_cents, 0);
 
     return {
       recorded: written.length,
@@ -98,7 +121,7 @@ export default defineTool({
         description: e.description,
         amount: dollars(e.amount_cents),
       })),
-      combinedAmount: dollars(combined),
+      combinedAmount: dollars(combinedCents),
       notVisible: missing.length ? missing : undefined,
       note:
         "The finding is now visible to every human who can see these expenses. " +

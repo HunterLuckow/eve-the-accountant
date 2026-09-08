@@ -2,10 +2,14 @@ import { notFound } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
 import { ReceiptViewer } from "@/components/receipt-viewer";
+import { AgentTimeline } from "@/components/agent-timeline";
+import { ApprovalPanel } from "@/components/approval-panel";
+import { DecisionButtons } from "@/components/decision-buttons";
 import {
   dollars,
   STATUS_STYLE,
   SEVERITY_STYLE,
+  type AgentStep,
   type ExpenseFlag,
   type ExpenseStatus,
 } from "@/lib/types";
@@ -39,7 +43,7 @@ export default async function ExpensePage({
    */
   if (!expense) notFound();
 
-  const [{ data: flags }, { data: extraction }] = await Promise.all([
+  const [{ data: flags }, { data: extraction }, { data: steps }] = await Promise.all([
     supabase
       .from("expense_flags")
       .select("*")
@@ -50,7 +54,36 @@ export default async function ExpensePage({
       .select("*")
       .eq("expense_id", id)
       .maybeSingle(),
+    supabase
+      .from("agent_steps")
+      .select("*")
+      .eq("expense_id", id)
+      .order("created_at"),
   ]);
+
+  /**
+   * Is the agent parked on this expense right now?
+   *
+   * An `input.requested` step with nothing after it means the run is still
+   * waiting. Anything later — the tool result, or an approval.candidate —
+   * means it has moved on, so the panel disappears on its own.
+   */
+  const timeline = (steps ?? []) as AgentStep[];
+  const lastRequest = [...timeline]
+    .reverse()
+    .find((s) => s.event_type === "input.requested");
+  const pending =
+    lastRequest && timeline[timeline.length - 1]?.id === lastRequest.id
+      ? lastRequest
+      : null;
+
+  const request = pending
+    ? ((pending.detail as { requests?: Array<Record<string, unknown>> }).requests?.[0] ??
+      null)
+    : null;
+  const requestAction = request?.action as
+    | { input?: { summary?: string; recommendation?: string } }
+    | undefined;
 
   const submitter = Array.isArray(expense.submitter)
     ? expense.submitter[0]
@@ -92,6 +125,16 @@ export default async function ExpensePage({
             <Field label="Submitted by" value={submitter?.full_name ?? "—"} />
             <Field label="Category" value={vendor?.category ?? "—"} />
           </dl>
+
+          {pending && request && (
+            <ApprovalPanel
+              sessionId={pending.session_id}
+              requestId={String(request.requestId)}
+              prompt={String(request.prompt ?? "The agent needs a decision.")}
+              summary={requestAction?.input?.summary}
+              recommendation={requestAction?.input?.recommendation}
+            />
+          )}
 
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -150,8 +193,18 @@ export default async function ExpensePage({
           )}
         </section>
 
-        <aside>
+        <aside className="space-y-8">
           <ReceiptViewer path={expense.receipt_path} />
+          <AgentTimeline expenseId={id} initial={timeline} />
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Decision
+            </h2>
+            <DecisionButtons
+              expenseId={id}
+              status={expense.status as ExpenseStatus}
+            />
+          </section>
         </aside>
       </main>
     </>

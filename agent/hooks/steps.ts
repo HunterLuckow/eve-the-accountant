@@ -88,7 +88,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * user ids — and agent_steps.expense_id is a foreign key, so a wrong guess
  * fails the insert and loses the step entirely.
  */
-function expenseIdFrom(data: unknown): string | null {
+function expenseIdsFrom(data: unknown): string[] {
   const seen: string[] = [];
   const walk = (v: unknown, depth = 0) => {
     if (depth > 6 || !v || typeof v !== "object") return;
@@ -105,7 +105,42 @@ function expenseIdFrom(data: unknown): string | null {
     }
   };
   walk(data);
-  return seen[0] ?? null;
+  return [...new Set(seen)];
+}
+
+/**
+ * Which expense does this step belong to?
+ *
+ * `agent_steps.expense_id` is a single column, but several tools act on a SET
+ * of expenses — flag_expense and request_human_review both cover every charge
+ * in a structuring pattern. Taking the first id found attributes the step to
+ * an arbitrary member of that set, and `.in()` does not guarantee order.
+ *
+ * Observed: "Escalated to a human" landed on MC-2293 while the reviewer was
+ * looking at MC-2291. The step existed, the expense page never showed it, the
+ * approval panel never dismissed, and nothing anywhere reported a problem.
+ *
+ * So prefer the expense this session is ABOUT — the first one any earlier step
+ * in the session attached to, which is whatever the webhook asked about.
+ */
+async function attributeTo(
+  db: Awaited<ReturnType<typeof getAgentDb>>,
+  sessionId: string,
+  candidates: string[],
+): Promise<string | null> {
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  const { data } = await db
+    .from("agent_steps")
+    .select("expense_id")
+    .eq("session_id", sessionId)
+    .not("expense_id", "is", null)
+    .order("created_at")
+    .limit(1);
+
+  const primary = data?.[0]?.expense_id as string | undefined;
+  return primary && candidates.includes(primary) ? primary : candidates[0];
 }
 
 /** Human-readable, tool-specific where it helps. */
@@ -182,7 +217,7 @@ export default defineHook({
             id: event.meta.id,
             session_id: ctx.session.id,
             org_id: orgId,
-            expense_id: expenseIdFrom(data),
+            expense_id: await attributeTo(db, ctx.session.id, expenseIdsFrom(data)),
             event_type: event.type,
             title: titleFor(event.type, data),
             detail: redact(data) as Record<string, unknown>,
