@@ -84,6 +84,7 @@ export default defineTool({
 
     return {
       found: true,
+      expenseId,
       windowDays,
       count: rows.length,
       siblings: rows,

@@ -79,6 +79,7 @@ export default defineTool({
 
     return {
       recorded: true,
+      expenseId,
       comparison: {
         claimedCents: expense.amount_cents,
         receiptCents: totalCents,

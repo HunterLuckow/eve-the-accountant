@@ -104,6 +104,7 @@ export default defineTool({
     const stillDraft = before.filter((e) => e.status === "draft");
 
     return {
+      expenseIds: before.map((e) => e.id),
       escalated: escalated?.length ?? 0,
       escalatedExpenses: (escalated ?? []).map((e) => ({
         id: e.id,

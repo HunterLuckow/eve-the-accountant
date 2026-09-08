@@ -90,6 +90,7 @@ export default defineTool({
 
     return {
       recorded: written.length,
+      expenseIds: visible.map((e) => e.id),
       kind,
       severity,
       coveredExpenses: visible.map((e) => ({

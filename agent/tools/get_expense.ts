@@ -56,6 +56,11 @@ export default defineTool({
 
     return {
       found: true,
+      // Echoed at the top level so agent/hooks/steps.ts can attribute this
+      // step to an expense. action.result carries the tool's OUTPUT, never its
+      // input, so a tool that does not echo its subject produces an
+      // unattributable timeline row.
+      expenseId,
       expense: {
         id: data.id,
         amountCents: data.amount_cents,
