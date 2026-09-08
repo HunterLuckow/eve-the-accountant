@@ -183,6 +183,110 @@ Related exported types: `EveMessageInputRequest`, `ClientInputRespondedEvent`.
 not needed for the eve half — `respond()` does it. The route still has a job:
 performing the Postgres write under the human's identity. Split it accordingly.
 
+## Approval round trip — VERIFIED against eve 0.51.1 (Task 12 spike)
+
+The public docs describe this incorrectly. What follows was captured from a
+running server.
+
+### The pause
+
+A tool with `approval: always()` produces this event sequence:
+
+```
+step.completed
+input.requested        <- the pause
+turn.completed
+session.waiting        <- parked, durably
+```
+
+`input.requested` payload:
+
+```jsonc
+{
+  "type": "input.requested",
+  "meta": { "at": "…", "id": "evt_01M20KKJRBCNC86A9RCE9728B2" },
+  "data": {
+    "requests": [                       // ARRAY — a turn can pause on several
+      {
+        "requestId": "aitxt-sw9FEDfuYF5jtdpWo0nZgrbG",
+        "kind": "tool-approval",
+        "display": "confirmation",
+        "allowFreeform": false,
+        "prompt": "Approve tool call: spike_confirm",
+        "options": [
+          { "id": "approve", "label": "Approve" },
+          { "id": "cancel",  "label": "Cancel"  }
+        ],
+        "action": { "callId": "toolu_…", "toolName": "spike_confirm", "input": { … } }
+      }
+    ],
+    "turnId": "turn_0", "stepIndex": 0, "sequence": 0
+  }
+}
+```
+
+Note `data.requests[0].requestId`, not a top-level field. The hook in Task 18
+stores the whole event payload in `agent_steps.detail`, so the UI reads
+`detail.requests[0].requestId`.
+
+### The resolution
+
+```
+POST /eve/v1/session/:sessionId
+content-type: application/json
+
+{ "inputResponses": [ { "requestId": "aitxt-…", "optionId": "approve" } ] }
+
+-> 202 { "ok": true, "sessionId": "wrun_…", "status": "accepted" }
+```
+
+**Two corrections to the published docs**, both of which return HTTP 400:
+
+| Docs say | Actually |
+|---|---|
+| `inputResponses` is an object keyed by requestId | It is an **array** — `Expected 'inputResponses' to be a non-empty array.` |
+| entries carry `{ decision: "approve" }` | entries carry **`{ requestId, optionId }`** — `Expected every 'inputResponses' entry to match the HITL response schema.` |
+
+`optionId` must be one of the `options[].id` values from the request, i.e.
+`"approve"` or `"cancel"`.
+
+After a valid response the session resumes on a NEW turn (`turnId: "turn_1"`)
+and emits `action.result` with the tool's output.
+
+### The caller reaches the tool
+
+`ctx.session.auth.current` inside `execute` reflects whichever channel AuthFn
+won the walk. Verified:
+
+| Request | principalType | principalId |
+|---|---|---|
+| no auth headers (dev) | `local-dev` | `local-dev` |
+| `x-webhook-secret: …` | **`machine`** | `expense-webhook` |
+
+This is what Task 17's approval gate keys on, and it works.
+
+## Other findings
+
+**`zod` must be a direct dependency.** eve's authored-package boundary refuses
+to resolve it transitively:
+`Cannot resolve package "zod" imported from ".../agent/tools/…"`. Files under
+`agent/` may only import packages the project itself declares.
+
+**New files under `agent/` need a dev-server restart.** They are not picked up
+by the running watcher.
+
+**eve ships a default tool harness.** `/eve/v1/info` lists these as
+`owner: framework`, enabled with no configuration:
+
+```
+bash   read_file   write_file   todo   web_fetch   web_search
+load_skill   ask_question   task_update   task_cancel   agent
+connection_search
+```
+
+An expense-review agent does not need shell or filesystem access. See
+`agent/agent.ts` for how this is narrowed.
+
 ## Deviations from the plan, to apply
 
 1. **Task 13** — add `attributes: {}` to the `machineToken` AuthFn. Required field.
