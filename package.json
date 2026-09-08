@@ -16,7 +16,8 @@
     "check:auth": "tsx scripts/check-channel-auth.ts",
     "check:tools": "tsx scripts/check-tool-surface.ts",
     "injection:arm": "tsx scripts/make-injected-receipt.ts arm",
-    "injection:disarm": "tsx scripts/make-injected-receipt.ts disarm"
+    "injection:disarm": "tsx scripts/make-injected-receipt.ts disarm",
+    "webhook:target": "tsx scripts/webhook-target.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
