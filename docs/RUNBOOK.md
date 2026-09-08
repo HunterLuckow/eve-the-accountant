@@ -122,9 +122,16 @@ reports it instead. Disarm afterwards.
 URL. 404. Not 403: as far as his session is concerned the record does not
 exist.
 
-**The unused connection** (~30s) — `agent/connections/supabase.ts`. The
-first-party MCP connection, present and deliberately unused, because a
-management token bypasses RLS.
+**The capability surface** (~30s) — `ls agent/tools/`. Eleven files: six that
+do something, five that refuse. `bash`, `read_file`, `write_file`,
+`web_fetch`, `web_search` are all overrides of eve's default harness.
+
+> "eve ships a capable default harness. For an agent that reads documents
+> arriving from outside the company, the first thing I did was take most of it
+> away. Half this directory is subtraction."
+
+Say this even if you cut the beat — one sentence, somewhere. It reads as
+competence, and it pre-empts someone noticing it themselves.
 
 ---
 
@@ -158,8 +165,12 @@ ordinary principal inside a system that already had to solve this. Nothing
 here was invented for the agent.
 
 **"Why not the Supabase MCP connection?"**
-It authenticates with a management token, which bypasses RLS. It is in the repo
-for schema work and deliberately not on the review path.
+It is the *build-time* integration, and I did use it — this app's schema and
+policies were written by an agent holding it. Supabase's own docs say not to
+give it to your end users, because it runs with your developer permissions and
+`execute_sql` bypasses RLS. A product feature acting for a tenant needs an
+identity in the application's model, not in the developer's. See
+[docs/two-integrations.md](two-integrations.md).
 
 **"How much did that cost?"**
 A review is a handful of model calls plus one image. `agent.ts` caps a session

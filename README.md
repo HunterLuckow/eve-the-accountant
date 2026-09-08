@@ -119,6 +119,7 @@ and rolls back, including the pgTAP extension itself.
 |---|---|
 | [docs/specs/](docs/specs/) | the design, and why the demo is shaped this way |
 | [docs/plans/](docs/plans/) | the 21-task implementation plan |
+| [docs/two-integrations.md](docs/two-integrations.md) | why the official Supabase MCP connection builds this app but cannot run it |
 | [docs/eve-api-notes.md](docs/eve-api-notes.md) | eve 0.51.1 API surface, verified against the installed package — including two places the published docs are wrong |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | the eight stage beats, and what to do when they break |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Vercel + webhook wiring |
