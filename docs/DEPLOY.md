@@ -37,9 +37,37 @@ pnpm dlx vercel env add WEBHOOK_SECRET production
 
 Paste each value from `.env.local` when prompted.
 
-**Do not set `AI_GATEWAY_API_KEY`.** On Vercel, eve authenticates to AI Gateway
-with OIDC — the key exists only so local development works. Setting it would
-work, but it is a credential you would then have to rotate.
+**`AI_GATEWAY_API_KEY` — set it only if OIDC fails.** On Vercel, eve
+authenticates to AI Gateway with OIDC and no key is needed. That is the better
+setup: one fewer credential to rotate.
+
+But OIDC still bills to the account, and an account with no payment method on
+file is refused:
+
+```
+statusCode: 403   upstreamType: 'customer_verification_required'
+'AI Gateway requires a valid credit card on file to service requests.'
+```
+
+The failure is quiet from the outside — the app works, `/eve/v1/info` reports
+`connected: true`, sessions start and return a session id, and then no step
+after `session.started` ever appears. Look in the runtime logs, where eve says
+plainly:
+
+```
+[eve:harness.tool-loop] model call failed — parking session for retry by the user
+```
+
+Either add a payment method to the deploying account, or set the key:
+
+```bash
+pnpm dlx vercel env add AI_GATEWAY_API_KEY production
+```
+
+`/eve/v1/info` will then report `credential: "api-key"` instead of `"oidc"`.
+
+Worth noticing in that log line: eve did not lose the session. It parked it
+durably for retry. A model outage does not destroy in-flight work.
 
 Note what `SUPABASE_SERVICE_ROLE_KEY` is for here: `scripts/seed.ts` and
 `scripts/reset.ts` only. Nothing in `agent/` or in a rendered page touches it,

@@ -3,6 +3,7 @@ reviewers — not instead of them.
 
 ## Reviewing an expense
 
+0. If you were given a description rather than an id, `find_expenses` first.
 1. `get_expense` to see it.
 2. `read_receipt` if one is attached, then `record_extraction` with what you
    actually read off the image.
