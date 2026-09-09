@@ -86,6 +86,41 @@ export default async function ExpensePage({
     | { input?: { summary?: string; recommendation?: string } }
     | undefined;
 
+  /**
+   * Did somebody already try to answer this and get refused?
+   *
+   * eve accepts the HTTP request (202) and only then runs the tool's approval
+   * RESPONSE policy, which may reject the responder. The rejection is recorded
+   * as an `approval.candidate` event carrying the reason — but that is a
+   * SESSION-level event with no expense_id, so the query above, filtered by
+   * expense, never sees it.
+   *
+   * The result was a genuinely bad experience: an employee clicked Approve,
+   * eve refused them, and the page said nothing at all. Fetch those events by
+   * session instead so the refusal is visible to the person it happened to.
+   */
+  let refusal: string | null = null;
+  if (pending) {
+    const { data: sessionSteps } = await supabase
+      .from("agent_steps")
+      .select("event_type, detail, created_at")
+      .eq("session_id", pending.session_id)
+      .eq("event_type", "approval.candidate")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const rejected = (sessionSteps ?? []).find((s) => {
+      const d = s.detail as { outcome?: string; requestId?: string };
+      return (
+        d?.outcome === "rejected" &&
+        (!d.requestId || d.requestId === String(request?.requestId ?? ""))
+      );
+    });
+
+    refusal =
+      (rejected?.detail as { reason?: string } | undefined)?.reason ?? null;
+  }
+
   const submitter = Array.isArray(expense.submitter)
     ? expense.submitter[0]
     : expense.submitter;
@@ -136,6 +171,7 @@ export default async function ExpensePage({
               prompt={String(request.prompt ?? "The agent needs a decision.")}
               summary={requestAction?.input?.summary}
               recommendation={requestAction?.input?.recommendation}
+              refusal={refusal}
             />
           )}
 

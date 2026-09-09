@@ -33,12 +33,22 @@ export function ApprovalPanel({
   prompt,
   summary,
   recommendation,
+  refusal,
 }: {
   sessionId: string;
   requestId: string;
   prompt: string;
   summary?: string;
   recommendation?: string;
+  /**
+   * A previous attempt that eve refused, if any.
+   *
+   * Comes from the approval RESPONSE policy, not from this component. eve
+   * returns 202 for the POST and only afterwards decides whether the responder
+   * is allowed — so a refusal cannot be reported from the fetch result and has
+   * to be read back from what the runtime recorded.
+   */
+  refusal?: string | null;
 }) {
   const [busy, setBusy] = useState<"approve" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,14 +89,19 @@ export function ApprovalPanel({
       return;
     }
 
-    // A 202 means eve accepted the message, NOT that the approval succeeded.
-    // The response policy runs afterwards and may reject an unauthorised
-    // responder, which arrives as an approval.candidate step. Give the hook a
-    // moment, then let the server component re-read.
-    setTimeout(() => {
-      router.refresh();
-      setBusy(null);
-    }, 1500);
+    /**
+     * A 202 means eve accepted the message, NOT that the approval succeeded.
+     *
+     * The response policy runs afterwards and may reject an unauthorised
+     * responder. That outcome reaches us only once the hook has written the
+     * approval.candidate event, so refresh a few times over several seconds
+     * rather than once — a single refresh usually lands before the verdict
+     * exists and shows the user nothing at all.
+     */
+    for (const delay of [1200, 2600, 4500]) {
+      setTimeout(() => router.refresh(), delay);
+    }
+    setTimeout(() => setBusy(null), 4600);
   }
 
   return (
@@ -104,6 +119,15 @@ export function ApprovalPanel({
         <p className="mt-2 text-xs text-amber-800">
           Agent recommends: <strong>{recommendation}</strong> — you decide.
         </p>
+      )}
+
+      {refusal && (
+        <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2">
+          <p className="text-sm font-semibold text-red-800">
+            That was refused.
+          </p>
+          <p className="mt-0.5 text-sm text-red-700">{refusal}</p>
+        </div>
       )}
 
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}

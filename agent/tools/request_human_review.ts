@@ -65,19 +65,26 @@ export default defineTool({
      * from their Supabase JWT claims by the supabaseUser AuthFn.
      */
     response: ({ responder }) => {
-      const role = responder.attributes?.user_role;
-      const roleName = Array.isArray(role) ? role[0] : role;
+      const one = (v: string | readonly string[] | undefined) =>
+        Array.isArray(v) ? v[0] : (v as string | undefined);
+
+      const roleName = one(responder.attributes?.user_role);
 
       if (roleName === "manager" || roleName === "finance") {
         return { status: "allowed" as const };
       }
 
+      // Name the person, not their primary key. principalId is a UUID, and
+      // this string is rendered to whoever was refused — telling somebody
+      // "186cfa41-... is employee" is not a message, it is a database row.
+      const who = one(responder.attributes?.email) ?? responder.principalId;
+
       return {
         status: "rejected" as const,
         reason:
           `Only a manager or finance may resolve an escalation. ` +
-          `${responder.principalId} is ${roleName ?? "unrecognised"}. ` +
-          `The request stays open.`,
+          `${who} is ${roleName ? `an ${roleName}` : "not recognised"}. ` +
+          `The request stays open for someone who is.`,
       };
     },
   },
