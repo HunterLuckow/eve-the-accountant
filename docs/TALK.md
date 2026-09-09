@@ -29,10 +29,23 @@ Everything else is support.
 | 5 | What we built | 0:30 | 2:40 |
 | 6 | **V1 - the loop** | 1:10 | 3:50 |
 | 7 | The seam *(four-handoffs.svg)* | 1:00 | 4:50 |
-| 8 | The policies | 0:45 | 5:35 |
-| 9 | **V3 - same rules, for people** | 0:35 | 6:10 |
-| 10 | **V2 - the refusal** | 0:55 | 7:05 |
-| 11 | Close + QR | 0:35 | **7:40** |
+| 8 | Two kinds of rule | 0:45 | 5:35 |
+| 9 | **V3 - what people see** | 0:35 | 6:10 |
+| 10 | **V4 - who may answer** | 0:50 | 7:00 |
+| 11 | **V2 - the refusal** | 0:55 | 7:55 |
+| 12 | Close + QR | 0:35 | **8:30** |
+
+**The three videos escalate.** V3 is what people can *see*, V4 is what people
+may *do*, V2 is what the agent may *not*. Each demonstrates something visible
+on slide 8, and V2 stays last because it is the thesis.
+
+**V4 is the only boundary in the talk that Postgres does not enforce** - eve
+authenticates the responder and checks their role. It is therefore the proof
+for slide 7's fourth handoff, which is otherwise the one claim in the deck with
+nothing behind it.
+
+**Cut order if the slot compresses:** V4 first (back to 7:40), then shorten
+slide 7, then drop V3 (back to ~6:20). Never cut slide 8 or V2.
 
 **Why V3 sits between the policies and the refusal.** On its own it is a nice
 aside about multi-tenancy. Placed here it does real work: slide 8 shows the
@@ -251,7 +264,43 @@ It is the only place both halves of the argument are visible at once.*
 
 ---
 
-## Slide 10 — V2: the refusal *(~30s video)*
+## Slide 10 — V4: who may answer *(~35s video)*
+
+**Set it up by calling back to V1:**
+
+> Remember that panel from the first video - *"the agent is waiting for you"*?
+> It was not waiting for anyone.
+
+*(play - Priya clicks Approve, nothing happens)*
+
+> Priya is an employee. She clicks approve, and the request just... stays open.
+> It is not denied. It is not used up. It is still sitting there for somebody
+> who is actually allowed to answer it.
+
+*(Dana clicks, it resolves)*
+
+> Dana is finance. Same button, same page.
+
+**After it lands - this is the part that matters:**
+
+> That is the only boundary I have shown you tonight that Postgres did not
+> enforce.
+>
+> **eve** authenticated Dana itself, checked her role, and only then accepted
+> the answer. And Priya's attempt is not gone - there is a record of who tried,
+> when, and why it was refused.
+>
+> So the division of labour runs both ways. eve decides who may *answer* the
+> agent. Postgres decides what the agent may *do*.
+
+**Then, straight into V2:**
+
+> Which leaves one question. We have seen what people are allowed to do.
+> What about the agent?
+
+---
+
+## Slide 11 — V2: the refusal *(~30s video)*
 
 **Set it up, then play. Do not explain it first.**
 
@@ -286,7 +335,7 @@ assertion goes red.
 
 ---
 
-## Slide 11 — Close + QR
+## Slide 12 — Close + QR
 
 **On screen:** QR to the Supabase Select invite code, large.
 
