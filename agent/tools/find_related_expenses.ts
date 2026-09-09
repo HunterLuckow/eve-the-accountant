@@ -78,28 +78,70 @@ export default defineTool({
       .maybeSingle();
 
     const rows = siblings ?? [];
-    const combinedCents = rows.reduce((sum, r) => sum + r.amount_cents, 0);
     const thresholdCents = org?.threshold_cents ?? null;
-    const largestCents = rows.reduce((m, r) => Math.max(m, r.amount_cents), 0);
+    const sum = (xs: typeof rows) => xs.reduce((t, r) => t + r.amount_cents, 0);
+
+    /**
+     * TWO TOTALS, BOTH NAMED FOR THEIR SCOPE.
+     *
+     * An earlier version returned a single `combinedCents` over the whole
+     * window and put it next to `thresholdCents`. That is a trap: on a 14-day
+     * window around the Meridian invoices it summed the three same-day phase
+     * charges AND an unrelated $42.00 charge from the week before, producing
+     * $11,847.00 — while flag_expense, summing only the three expenses the
+     * model chose to flag, produced $11,805.00.
+     *
+     * Both numbers were correct. They described different sets. The model
+     * reported the tool's figure faithfully and looked like it had failed at
+     * arithmetic, when in fact the tool had handed it a total for a set nobody
+     * was talking about.
+     *
+     * A number a model will quote must be unambiguous about what it counts.
+     * Neither of these is called "combined".
+     */
+    const sameDay = rows.filter((r) => r.spent_at === base.spent_at);
+
+    const windowTotalCents = sum(rows);
+    const sameDayTotalCents = sum(sameDay);
+    const largestSameDayCents = sameDay.reduce(
+      (m, r) => Math.max(m, r.amount_cents),
+      0,
+    );
 
     return {
       found: true,
       expenseId,
       windowDays,
+      baseSpentAt: base.spent_at,
+
+      // Everything the query matched, for context.
       count: rows.length,
       siblings: rows,
-      combinedCents,
-      largestSingleCents: largestCents,
+      windowTotalCents,
+
+      /**
+       * The same-day cluster: the set structuring actually describes. This is
+       * the one to quote when reporting a split-transaction pattern, and the
+       * one flag_expense will recompute from the ids you pass it.
+       */
+      sameDayCount: sameDay.length,
+      sameDayExpenseIds: sameDay.map((r) => r.id),
+      sameDayTotalCents,
+
       thresholdCents,
-      // The three facts that together define structuring. Computed here so the
-      // model reads a conclusion rather than doing mental arithmetic.
+
+      // Computed here so the model reads conclusions rather than doing
+      // arithmetic. Deliberately scoped to the same-day cluster.
       analysis:
         thresholdCents === null
           ? null
           : {
-              everySingleChargeUnderThreshold: largestCents < thresholdCents,
-              combinedExceedsThreshold: combinedCents > thresholdCents,
-              multipleCharges: rows.length > 1,
+              scope: "same-day charges only",
+              multipleCharges: sameDay.length > 1,
+              everySingleChargeUnderThreshold:
+                sameDay.length > 0 && largestSameDayCents < thresholdCents,
+              sameDayTotalExceedsThreshold: sameDayTotalCents > thresholdCents,
+              othersInWindowNotCounted: rows.length - sameDay.length,
             },
     };
   },

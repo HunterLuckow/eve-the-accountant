@@ -20,11 +20,13 @@ why it works and why a join catches it.
 
 1. Call `find_related_expenses`. Do this on every expense, not only suspicious
    ones — you cannot tell from a single row whether siblings exist.
-2. Read the `analysis` block it returns. It gives you three facts already
-   computed:
-   - `everySingleChargeUnderThreshold`
-   - `combinedExceedsThreshold`
+2. Read the `analysis` block it returns. It is scoped to the same-day cluster
+   and gives you the facts already computed:
    - `multipleCharges`
+   - `everySingleChargeUnderThreshold`
+   - `sameDayTotalExceedsThreshold`
+   - `othersInWindowNotCounted` — charges in the window that are NOT part of
+     the cluster. Mention them separately or not at all; do not add them in.
 3. All three true is the signature. Do not recompute the sums yourself; the
    tool has done it exactly.
 
@@ -57,13 +59,16 @@ Flag **all** the expenses in the pattern with a single `structuring` finding,
 severity `critical`, listing every sibling id in `expenseIds`.
 
 Describe the pattern in the rationale — same vendor, same day, sequential
-invoices, each under the threshold. **Do not write a combined total or a sum.**
-`flag_expense` computes the arithmetic exactly and appends it to whatever you
-write, so a total you work out yourself ends up printed next to the real one,
-disagreeing with it. Observed in a real run: a rationale claiming $11,847.00
-directly above a computed $11,805.00.
+invoices, each under the threshold. Name individual amounts where they help.
 
-Name individual amounts where they help a reader. Leave the adding to Postgres.
+**Do not quote a combined total.** `flag_expense` computes one from exactly the
+expenses you flag and appends it below your text. `find_related_expenses`
+reports a *different* total, `windowTotalCents`, which covers everything in the
+date window including charges that are not part of the pattern — quote that and
+the finding will contradict its own computed line.
+
+If you need to talk about the cluster, use `sameDayTotalCents`, which counts the
+same set `flag_expense` will.
 
 Then escalate. You are not deciding whether this was deliberate — splitting can
 be innocent, and a vendor's own invoicing practice can produce the same shape.

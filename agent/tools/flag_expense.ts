@@ -44,10 +44,10 @@ export default defineTool({
         "What you found, in one or two sentences, for a busy reviewer who has " +
           "not seen the other expenses. Describe the PATTERN — same vendor, " +
           "same day, sequential invoices, each under the threshold — and name " +
-          "individual amounts where they help. Do NOT state a combined total " +
-          "or write out a sum: the totals are computed exactly and appended to " +
-          "whatever you write here. A total you calculate yourself will sit " +
-          "next to the real one and disagree with it.",
+          "individual amounts where they help. Do not state a combined total: " +
+          "one is computed from the expenses you pass here and appended below " +
+          "your text, so any total you quote from elsewhere describes a " +
+          "different set and will disagree with it.",
       ),
     evidence: z
       .record(z.string(), z.unknown())
@@ -79,14 +79,23 @@ export default defineTool({
     /**
      * Append the arithmetic rather than trusting the prose.
      *
-     * The model writes the rationale, and it does the sums again in words even
-     * though every tool hands it the totals pre-computed. Observed in a real
-     * run: a finding whose rationale read "$3,940.00 + $3,875.00 + $3,990.00 =
-     * $11,847.00" — the right charges, the wrong total, sitting on screen next
-     * to the correct figure elsewhere on the page.
+     * A finding is evidence a human acts on, so its numbers are computed from
+     * exactly the rows being flagged, here, and appended. The model explains;
+     * Postgres counts.
      *
-     * A finding is evidence a human acts on, so the numbers in it are computed
-     * here and appended. The model explains; Postgres counts.
+     * This exists because of a real failure, and the failure was not the one it
+     * looked like. A production run produced a rationale reading "Combined
+     * $11,847.00" three lines above "Computed: … = $11,805.00". The obvious
+     * reading — the model cannot add — was wrong. $11,847.00 was
+     * find_related_expenses' own `combinedCents`, which summed everything in a
+     * 14-day window including an unrelated $42.00 charge; $11,805.00 was the
+     * three expenses actually flagged. Two correct numbers for two different
+     * sets, and the tools were the ones disagreeing.
+     *
+     * find_related_expenses now returns `windowTotalCents` and
+     * `sameDayTotalCents` instead of one ambiguous "combined". A number a model
+     * will quote has to be unambiguous about what it counts — and when output
+     * looks like a model error, check what the tools actually handed it first.
      */
     const arithmetic =
       visible.length > 1
