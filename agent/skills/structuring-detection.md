@@ -54,9 +54,16 @@ most useful, because the pattern is still preventable.
 ## What to do
 
 Flag **all** the expenses in the pattern with a single `structuring` finding,
-severity `critical`, listing every sibling id in `expenseIds`. Put the combined
-total and the threshold in the rationale so the human sees the arithmetic
-without rerunning it.
+severity `critical`, listing every sibling id in `expenseIds`.
+
+Describe the pattern in the rationale — same vendor, same day, sequential
+invoices, each under the threshold. **Do not write a combined total or a sum.**
+`flag_expense` computes the arithmetic exactly and appends it to whatever you
+write, so a total you work out yourself ends up printed next to the real one,
+disagreeing with it. Observed in a real run: a rationale claiming $11,847.00
+directly above a computed $11,805.00.
+
+Name individual amounts where they help a reader. Leave the adding to Postgres.
 
 Then escalate. You are not deciding whether this was deliberate — splitting can
 be innocent, and a vendor's own invoicing practice can produce the same shape.

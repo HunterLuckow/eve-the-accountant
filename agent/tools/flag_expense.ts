@@ -41,8 +41,13 @@ export default defineTool({
       .string()
       .min(20)
       .describe(
-        "What you found, in one or two sentences, with the numbers. Written " +
-          "for a busy human reviewer who has not seen the other expenses.",
+        "What you found, in one or two sentences, for a busy reviewer who has " +
+          "not seen the other expenses. Describe the PATTERN — same vendor, " +
+          "same day, sequential invoices, each under the threshold — and name " +
+          "individual amounts where they help. Do NOT state a combined total " +
+          "or write out a sum: the totals are computed exactly and appended to " +
+          "whatever you write here. A total you calculate yourself will sit " +
+          "next to the real one and disagree with it.",
       ),
     evidence: z
       .record(z.string(), z.unknown())
