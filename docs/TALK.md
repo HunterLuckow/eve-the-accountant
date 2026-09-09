@@ -105,11 +105,14 @@ An eve agent reviews the queue alongside the humans.
 > *(as the timeline streams)* Submitting it flipped one column in Postgres. A
 > Database Webhook noticed and woke the agent. Nothing is polling.
 >
-> *(as the finding appears)* And it found something. Three invoices — same
-> vendor, same day, sequential numbers. **Each one under the threshold. Eleven
-> thousand eight hundred combined.**
+> *(as the finding appears)* And it found something. **Four** invoices — same
+> vendor, same day, sequential numbers. Each one under the threshold.
+> **Fifteen thousand eight hundred combined.**
 >
-> Two of those three are still drafts. Nobody had submitted them yet.
+> The one I just typed was thirty-nine ninety-five. **Five dollars** under the
+> limit.
+>
+> Three of those four are still drafts. Nobody had submitted them yet.
 >
 > *(on the approval panel)* A human reviewing these one at a time would have
 > approved all three, because from inside a queue you only ever see one row.
@@ -293,46 +296,59 @@ the edit.
 | Window A | signed in as **priya@northwind.demo**, on `/inbox` |
 | Window B | signed in as **dana@northwind.demo**, on `/inbox` |
 | Both | 125-150% zoom, bookmarks hidden |
+| Desktop | `receipt-MC-2294.png` visible, so the file picker opens on it |
 
-Do **not** pre-open the expense. The click into it is part of the shot.
+**Run `pnpm receipts` and `pnpm seed` on the DAY you record.** Both bake in
+today's date - the receipts print it, and the seed sets `spent_at` on the demo
+expenses. Record on a later day and the agent correctly reports that the
+receipt date and the expense date disagree, which is a second finding
+competing with the one you want.
 
 ### The clicks
 
 **Window A - Priya**
 
-1. Start recording on `/inbox`. Her three Meridian drafts are at the top.
-   *Hold 2s so the room reads "3 drafts not yet submitted".*
-2. Click **"Meridian Consulting - Phase 1 - Discovery (MC-2291)"**.
-3. The expense page loads. Status pill reads `draft`. The blue **Draft** panel
-   is there. *Hold 2s.*
-4. Click **"Submit for review"**.
-5. The pill flips to `submitted`. *Hold 2s.* **Stop recording.**
+1. Start recording on `/inbox`. Her three Meridian drafts sit at the top.
+   *Hold 2s.*
+2. Click **New expense**.
+3. Fill the form:
 
-*Do not use the `/new` form for this shot. Creating a fourth Meridian invoice
-changes what `find_related_expenses` returns, and the agent's totals stop
-matching the talk track. The Submit button gives the same human beat with none
-of the variance.*
+   | Field | Value |
+   |---|---|
+   | Description | `Meridian Consulting - Phase 4 (MC-2294)` |
+   | Amount | `3995.00` |
+   | Date | **leave the default** |
+   | Vendor | **Meridian Consulting** |
+   | Receipt | attach `receipt-MC-2294.png` |
+   | Submit for review | **leave checked** |
+
+   **Vendor and date are the two that matter.** `find_related_expenses` matches
+   on submitter + vendor + date window. Get either wrong and it finds nothing,
+   the agent reports an unremarkable expense, and there is no video.
+
+4. Click **Save expense**. It lands on the new expense page, status `submitted`.
+   *Hold 2s.* **Stop recording.**
 
 **Window B - Dana** *(start recording again)*
 
-6. Navigate to the same expense - paste the URL, don't film the navigation.
-7. Record continuously for ~90s while the timeline fills:
+5. Navigate to the same expense - paste the URL, do not film the navigation.
+6. Record continuously for ~90s while the timeline fills:
    *Looked up the expense - Checked for related charges - Read the receipt -
    Recorded what the receipt says - Recorded a finding - Waiting for a human.*
-8. The **structuring** finding appears in the left column. *Hold 4s on it,
-   completely still - this is the frame everything else is in service of.*
-9. The amber approval panel appears: *"The agent is waiting for you."*
+7. The **structuring** finding appears in the left column. *Hold 4s, completely
+   still - this is the frame everything else serves.*
+8. The amber approval panel appears: *"The agent is waiting for you."*
    *Hold 5s.* **Stop.**
 
 **Do not record the Approve click.** Ending on the pause is the stronger last
-frame - the agent stopped and the room sits with it. Resolving it answers a
-question you want them still holding.
+frame - the agent stopped, and the room sits with it.
 
 ### The edit
 
 | Section | Treatment |
 |---|---|
-| Priya's submit | real time, ~10s |
+| Priya filling the form | **speed 1.5-2x**, ~12s - typing is dull at real speed |
+| Save + status flips | real time, ~4s |
 | Cut to Dana | hard cut, no transition - the cut hides the sign-out |
 | Timeline filling | **speed 3-4x**, ~15s |
 | Finding appears | **back to real time**, hold 6s |

@@ -59,6 +59,27 @@ const RECEIPTS: Receipt[] = [
       { desc: "Team enablement session", qty: "1", rate: "$475.00", amount: 47500 },
     ],
   },
+  /**
+   * The one entered live on camera.
+   *
+   * Not seeded — `pnpm seed` only creates MC-2291..2293. This receipt exists so
+   * there is a file to attach when the expense is created during the recording,
+   * and its total must match what gets typed into the form ($3,995.00). The
+   * agent reads this image and compares it against the claimed amount, so a
+   * mismatch here produces a second, competing finding.
+   *
+   * $3,995.00 is deliberate: $5 under the $4,000 approval threshold, and it
+   * brings the four-invoice total to a round $15,800.00.
+   */
+  {
+    file: "receipt-4.png",
+    invoice: "MC-2294",
+    phase: "Phase 4 — Extended support",
+    lines: [
+      { desc: "Extended support retainer", qty: "18 hrs", rate: "$185.00", amount: 333000 },
+      { desc: "Escalation coverage", qty: "1", rate: "$665.00", amount: 66500 },
+    ],
+  },
 ];
 
 const usd = (cents: number) =>
