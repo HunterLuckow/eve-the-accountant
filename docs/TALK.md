@@ -98,25 +98,29 @@ An eve agent reviews the queue alongside the humans.
 
 **Say over it** — sparse, let the screen carry:
 
-> *(as the form submits)* Someone expenses a consulting invoice. Thirty-nine
-> forty. Under the four-thousand-dollar approval threshold, so it routes
-> straight to a manager.
+> *(as the form fills)* Someone expenses a consulting invoice. Thirty-nine
+> ninety-five. The approval threshold here is four thousand, so this routes
+> straight to a manager and nobody else ever looks at it.
 >
 > *(as the timeline streams)* Submitting it flipped one column in Postgres. A
 > Database Webhook noticed and woke the agent. Nothing is polling.
 >
 > *(as the finding appears)* And it found something. **Four** invoices — same
-> vendor, same day, sequential numbers. Each one under the threshold.
-> **Fifteen thousand eight hundred combined.**
+> vendor, consecutive numbers, MC-2291 through 2294, labelled Phase 1 to
+> Phase 4. Each one under the threshold. **Fifteen thousand eight hundred
+> combined.**
 >
 > The one I just typed was thirty-nine ninety-five. **Five dollars** under the
-> limit.
+> limit. Its own words: *a tight cluster within a hundred and twenty-five
+> dollars of the line.*
 >
-> Three of those four are still drafts. Nobody had submitted them yet.
+> And read that last sentence — **"the three Phase 1 to 3 rows are still in
+> draft, so the pattern is preventable now."** Nobody has submitted them yet.
+> That is the whole reason this is worth catching.
 >
-> *(on the approval panel)* A human reviewing these one at a time would have
-> approved all three, because from inside a queue you only ever see one row.
-> The pattern only exists **across** rows.
+> *(on the approval panel)* A reviewer working a queue would have approved all
+> four, because from inside a queue you only ever see one row. The pattern only
+> exists **across** rows.
 >
 > So the agent stops, and asks.
 
@@ -298,6 +302,13 @@ the edit.
 | Both | 125-150% zoom, bookmarks hidden |
 | Desktop | `receipt-MC-2294.png` visible, so the file picker opens on it |
 
+**Run `pnpm receipts` AND `pnpm seed` on the DAY you record — `pnpm reset` is
+not enough.** Reset rewinds status but not `spent_at`, so a seed from an
+earlier day leaves the three seeded invoices dated then and the one you create
+dated today. That is survivable — the agent reads the phase labels and
+consecutive invoice numbers instead, and says "within a few days" — but if you
+want the tighter "same day" version, re-seed first.
+
 **Run `pnpm receipts` and `pnpm seed` on the DAY you record.** Both bake in
 today's date - the receipts print it, and the seed sets `spent_at` on the demo
 expenses. Record on a later day and the agent correctly reports that the
@@ -350,7 +361,7 @@ frame - the agent stopped, and the room sits with it.
 | Priya filling the form | **speed 1.5-2x**, ~12s - typing is dull at real speed |
 | Save + status flips | real time, ~4s |
 | Cut to Dana | hard cut, no transition - the cut hides the sign-out |
-| Timeline filling | **speed 3-4x**, ~15s |
+| Timeline filling | **speed 2x**, ~18s (real run was 36s, not the 90s assumed) |
 | Finding appears | **back to real time**, hold 6s |
 | Approval panel | real time, hold 6s, end |
 
