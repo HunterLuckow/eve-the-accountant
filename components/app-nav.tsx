@@ -35,8 +35,15 @@ export async function AppNav() {
             eve the accountant
           </Link>
           <div className="flex gap-4 text-sm text-gray-600">
-            <Link href="/inbox" className="hover:text-black">My expenses</Link>
+            <Link href="/inbox" className="hover:text-black">Expenses</Link>
             <Link href="/review" className="hover:text-black">Review queue</Link>
+            <Link href="/agent" className="hover:text-black">Ask the agent</Link>
+            <Link
+              href="/new"
+              className="rounded bg-black px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-800"
+            >
+              New expense
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-4 text-sm">

@@ -5,6 +5,7 @@ import { ReceiptViewer } from "@/components/receipt-viewer";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { ApprovalPanel } from "@/components/approval-panel";
 import { DecisionButtons } from "@/components/decision-buttons";
+import { SubmitDraft } from "@/components/submit-draft";
 import {
   dollars,
   STATUS_STYLE,
@@ -125,6 +126,8 @@ export default async function ExpensePage({
             <Field label="Submitted by" value={submitter?.full_name ?? "—"} />
             <Field label="Category" value={vendor?.category ?? "—"} />
           </dl>
+
+          {expense.status === "draft" && <SubmitDraft expenseId={id} />}
 
           {pending && request && (
             <ApprovalPanel

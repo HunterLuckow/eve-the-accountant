@@ -24,6 +24,46 @@ import { createServerSupabase } from "@/lib/supabase/server";
  * This is also the action the agent structurally cannot perform. Same table,
  * same statement — different principal, different outcome.
  */
+/**
+ * Submit a draft for review.
+ *
+ * This is the demo's cold open, and the reason it exists as a button rather
+ * than a line of SQL: an expense entering the queue should look like a person
+ * doing their job, not like someone operating a database.
+ *
+ * The UPDATE runs as the signed-in user, so two different policies can carry
+ * it — `expenses_update_own_draft` if you are the submitter, or
+ * `expenses_update_approver` if you are a manager or finance. Anyone else gets
+ * zero rows. Nothing here checks which case applies.
+ *
+ * Crossing into `submitted` is what fires the Database Webhook, which wakes
+ * the agent. There is no code path from this action to eve — the trigger sees
+ * a row change and takes it from there.
+ */
+export async function submitExpense(expenseId: string) {
+  const supabase = await createServerSupabase();
+
+  const { data, error } = await supabase
+    .from("expenses")
+    .update({ status: "submitted" })
+    .eq("id", expenseId)
+    .eq("status", "draft")
+    .select("id");
+
+  if (error) return { ok: false as const, error: error.message };
+  if (!data?.length) {
+    return {
+      ok: false as const,
+      error: "Could not submit — it may already be submitted, or not yours.",
+    };
+  }
+
+  revalidatePath(`/expense/${expenseId}`);
+  revalidatePath("/inbox");
+  revalidatePath("/review");
+  return { ok: true as const };
+}
+
 export async function decideExpense(
   expenseId: string,
   decision: "approved" | "rejected",

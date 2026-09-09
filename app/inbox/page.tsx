@@ -36,7 +36,7 @@ export default async function InboxPage() {
       <main className="mx-auto max-w-5xl px-6 py-10">
         <header className="mb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-xl font-semibold">My expenses</h1>
+            <h1 className="text-xl font-semibold">Expenses</h1>
             <p className="mt-1 text-sm text-gray-500">
               {expenses.length} visible · {dollars(total)} total
             </p>
