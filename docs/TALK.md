@@ -277,6 +277,13 @@ It is the only place both halves of the argument are visible at once.*
 > It is not denied. It is not used up. It is still sitting there for somebody
 > who is actually allowed to answer it.
 
+*(Dana's screen, before she clicks)*
+
+> And notice — Dana can see that somebody already tried.
+> **priya@northwind.demo is an employee.** The request wasn't consumed by that
+> attempt, it wasn't denied, it just stayed open for someone who's actually
+> allowed — and there's a record of who tried.
+
 *(Dana clicks, it resolves)*
 
 > Dana is finance. Same button, same page.
