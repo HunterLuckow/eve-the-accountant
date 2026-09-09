@@ -100,14 +100,19 @@ export default async function ExpensePage({
    * session instead so the refusal is visible to the person it happened to.
    */
   let refusal: string | null = null;
+  let priorAttempt: string | null = null;
+
   if (pending) {
-    const { data: sessionSteps } = await supabase
-      .from("agent_steps")
-      .select("event_type, detail, created_at")
-      .eq("session_id", pending.session_id)
-      .eq("event_type", "approval.candidate")
-      .order("created_at", { ascending: false })
-      .limit(5);
+    const [{ data: sessionSteps }, { data: auth }] = await Promise.all([
+      supabase
+        .from("agent_steps")
+        .select("event_type, detail, created_at")
+        .eq("session_id", pending.session_id)
+        .eq("event_type", "approval.candidate")
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase.auth.getUser(),
+    ]);
 
     const rejected = (sessionSteps ?? []).find((s) => {
       const d = s.detail as { outcome?: string; requestId?: string };
@@ -117,8 +122,25 @@ export default async function ExpensePage({
       );
     });
 
-    refusal =
-      (rejected?.detail as { reason?: string } | undefined)?.reason ?? null;
+    const detail = rejected?.detail as
+      | { reason?: string; responderPrincipalId?: string }
+      | undefined;
+
+    /**
+     * A refusal belongs to the REQUEST, so everyone viewing this expense can
+     * see that one happened. But "That was refused" addressed to somebody who
+     * did not do anything reads as though they were refused.
+     *
+     * So: the person who was actually turned away gets the red box. Everyone
+     * else gets a muted note, because knowing an unauthorised attempt was made
+     * is useful to an approver — it just is not an alarm directed at them.
+     */
+    if (detail?.reason) {
+      const wasMe =
+        !!auth?.user?.id && detail.responderPrincipalId === auth.user.id;
+      if (wasMe) refusal = detail.reason;
+      else priorAttempt = detail.reason;
+    }
   }
 
   const submitter = Array.isArray(expense.submitter)
@@ -172,6 +194,7 @@ export default async function ExpensePage({
               summary={requestAction?.input?.summary}
               recommendation={requestAction?.input?.recommendation}
               refusal={refusal}
+              priorAttempt={priorAttempt}
             />
           )}
 

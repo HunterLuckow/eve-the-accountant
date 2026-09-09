@@ -34,6 +34,7 @@ export function ApprovalPanel({
   summary,
   recommendation,
   refusal,
+  priorAttempt,
 }: {
   sessionId: string;
   requestId: string;
@@ -49,6 +50,12 @@ export function ApprovalPanel({
    * to be read back from what the runtime recorded.
    */
   refusal?: string | null;
+  /**
+   * Somebody ELSE was refused on this request. Useful context for an approver
+   * — not an alarm directed at them, so it is styled as a note rather than an
+   * error.
+   */
+  priorAttempt?: string | null;
 }) {
   const [busy, setBusy] = useState<"approve" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +135,12 @@ export function ApprovalPanel({
           </p>
           <p className="mt-0.5 text-sm text-red-700">{refusal}</p>
         </div>
+      )}
+
+      {!refusal && priorAttempt && (
+        <p className="mt-3 border-l-2 border-amber-300 pl-2.5 text-xs text-amber-800/80">
+          An earlier attempt was refused. {priorAttempt}
+        </p>
       )}
 
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
